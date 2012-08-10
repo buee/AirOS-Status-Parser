@@ -263,26 +263,19 @@ for ($bgcolor = 'transparent'; list($ip,$data) = each($radio_data); $bgcolor = $
 			echo '<td>N/A</td>';
 			echo '<td>N/A</td>';
 		}
-/*		if($data['ame'] == 1) {
-			echo '<td>' . $data['amq'] . '</td>';
-			echo '<td>' . $data['amc'] . '</td>';
-		} else {
-			echo '<td>N/A</td>';
-			echo '<td>N/A</td>';
-		}
-*/		if($data['gps'] == 1) {
+		if($data['gps'] == 1) {
 			echo '<td>Y</td>';
 		} else {
 			echo '<td>N</td>';
 		}
-		$nodup = "SELECT * FROM `$bh_table` WHERE `ip` LIKE '$ip'";
-			$execute = mysql_query($nodup);
-			$execute = mysql_fetch_array($execute);
-			if(!in_array($ip, $execute)) {
+//		$nodup = "SELECT * FROM `$bh_table` WHERE `ip` LIKE '$ip'";
+//			$execute = mysql_query($nodup);
+//			$execute = mysql_fetch_array($execute);
+//			if(!in_array($ip, $execute)) {
 				echo '<td><input type="checkbox" name="addtodb[]" value="' . $ip . '" /></td>';
-			} else {
-				echo '<td><input type="checkbox" name="addtodb[]" value="' . $ip . '" disabled /></td>';
-			}
+//			} else {
+//				echo '<td><input type="checkbox" name="addtodb[]" value="' . $ip . '" disabled /></td>';
+//			}
 		echo '</tr>';
     }
 	echo '</table>';
@@ -294,140 +287,122 @@ for ($bgcolor = 'transparent'; list($ip,$data) = each($radio_data); $bgcolor = $
 }
 
 ?></form>
-<pre><?php //print_r($radio_data); ?></pre><br><?php
+<?php
 
-	if(isset($_POST['add'])) {
-		$tobeadded = $_POST['addtodb'];
+if(isset($_POST['add'])) {
+	$tobeadded = $_POST['addtodb'];
+	
+	foreach($tobeadded as $pos => $ip){
+		$speeds = $radio_data[$ip]['tx'] . "/" . $radio_data[$ip]['rx'];
+		$errors = ($radio_data[$ip]['retries'] + $radio_data[$ip]['err_other']);
+		$model = $radio_data[$ip]['model'];
+		$name = $radio_data[$ip]['name'];
+		$freq = $radio_data[$ip]['freq'];
+		$channel = $radio_data[$ip]['channel'];
+		$mode = $radio_data[$ip]['mode'];
+		$ssid = $radio_data[$ip]['ssid'];
+		$security = $radio_data[$ip]['security'];
+		$fw = $radio_data[$ip]['fw'];
+		$width = $radio_data[$ip]['width'];
+		$distance = $radio_data[$ip]['distance'];
+		$wlan_mac = $radio_data[$ip]['wlan_mac'];
+		$lan_mac = $radio_data[$ip]['lan_mac'];
+		$lan = $radio_data[$ip]['lan'];
+		$connections = $radio_data[$ip]['connections'];
+		$noise = $radio_data[$ip]['noise'];
+		$ccq = $radio_data[$ip]['ccq'];
+		$ame = $radio_data[$ip]['ame'];
+		$amq = $radio_data[$ip]['amq'];
+		$amc = $radio_data[$ip]['amc'];
+		$uptime = $radio_data[$ip]['uptime'];
+		$dfs = $radio_data[$ip]['dfs'];
+		$gps = $radio_data[$ip]['gps'];
+		$wds = $radio_data[$ip]['wds'];
+		$signal = $radio_data[$ip]['signal'];
+		$chains = $radio_data[$ip]['chains'];
+	
+		?><pre><?php print_r($pdata);?></pre><?php
+/*		for ($j = 0; list($ip,$pdata) = each($peer_data); $j++) {
+			if(isset($pdata['mac'])) {	
+				$peermac = $pdata['mac'];
+				break;
+			} else {
+				$peermac = "NOT ASSOCIATED";
+				break;
+			}
+		}
+*/		
+		echo $ip . "<br>" . $wlan_mac . "<br>" . $peermac . "<br>" . $name . "<br><hr><br>";
 		
-		foreach($tobeadded as $ip) {
-//			echo $ip . "<br>";
-			if(in_array($ip, $tobeadded)) {
-				$nodup = "SELECT * FROM `$bh_table` WHERE `ip` LIKE '$ip'";
-				
-				$execute = mysql_query($nodup);
-				$execute = mysql_fetch_array($execute);
-				
-				if(!in_array($ip, $execute)) {
-				
-				for ($j = 0; list($ip,$pdata) = each($peer_data); $j++) {
-					if(isset($pdata['mac'])) {	
-						$peer_mac = $pdata['mac'];
-						break;
-					} else {
-						$peer_mac = "NOT ASSOCIATED";
-						break;
-					}
-				}
-					$speeds = $radio_data[$ip]['tx'] . "/" . $radio_data[$ip]['rx'];
-					$errors = ($radio_data[$ip]['retries'] + $radio_data[$ip]['err_other']);
-					$model = $radio_data[$ip]['model'];
-					$name = $radio_data[$ip]['name'];
-					$freq = $radio_data[$ip]['freq'];
-					$channel = $radio_data[$ip]['channel'];
-					$mode = $radio_data[$ip]['mode'];
-					$ssid = $radio_data[$ip]['ssid'];
-					$security = $radio_data[$ip]['security'];
-					$fw = $radio_data[$ip]['fw'];
-					$width = $radio_data[$ip]['width'];
-					$distance = $radio_data[$ip]['distance'];
-					$wlan_mac = $radio_data[$ip]['wlan_mac'];
-					$lan_mac = $radio_data[$ip]['lan_mac'];
-					$lan = $radio_data[$ip]['lan'];
-					$connections = $radio_data[$ip]['connections'];
-					$noise = $radio_data[$ip]['noise'];
-					$ccq = $radio_data[$ip]['ccq'];
-					$ame = $radio_data[$ip]['ame'];
-					$amq = $radio_data[$ip]['amq'];
-					$amc = $radio_data[$ip]['amc'];
-					$uptime = $radio_data[$ip]['uptime'];
-					$dfs = $radio_data[$ip]['dfs'];
-					$gps = $radio_data[$ip]['gps'];
-					$wds = $radio_data[$ip]['wds'];
-					$signal = $radio_data[$ip]['signal'];
-					$chains = $radio_data[$ip]['chains'];
-			
-//					echo "<pre>" . print_r($radio_data[$ip]) . "</pre>";
-					$add_me_a_new_bh = "INSERT INTO `$database`.`$bh_table` (
-					`tower_#`,
-					`tower_name`,
-					`ip`,
-					`peer_ip`,
-					`model`,
-					`device_name`,
-					`frequency`,
-					`channel`,
-					`wireless_mode`,
-					`ssid`,
-					`security`,
-					`firmware`,
-					`channel_width`,
-					`distance`,
-					`wlan_mac`,
-					`lan_mac`,
-					`lan_speed`,
-					`connections`,
-					`noise_floor`,
-					`transmit_ccq`,
-					`airmax_enabled`,
-					`am_q`,
-					`am_c`,
-					`uptime`,
-					`dfs`,
-					`gps`,
-					`wds`,
-					`signal`,
-					`speed`,
-					`chains`,
-					`errors`) VALUES (
-					'tower_# placeholder'
-					'tower_name placeholder',
-					'$ip',
-					'$peer_mac',
-					'$model',
-					'$name',
-					'$freq',
-					'$channel',
-					'$mode',
-					'$ssid',
-					'$security',
-					'$fw',
-					'$width',
-					'$distance',
-					'$wlan_mac',
-					'$lan_mac',
-					'$lan',
-					'$connections',
-					'$noise',
-					'$ccq',
-					'$ame',
-					'$amq',
-					'$amc',
-					'$uptime',
-					'$dfs',
-					'$gps',
-					'$wds',
-					'$signal',
-					'$speeds',
-					'$chains',
-					'$errors')";
-				
-					echo "<font color=GREEN>SUCCESS: " . $ip . "</font><br><hr><br>";
-				} else {
-				echo "<font color=RED>Error: " . $ip . " already exists in database!</font><br><hr>" . $execute;
-				}
-		} else {
-			echo "Not verified";
-		}
-// Query to get Peer IP based on 
-			$pip_get = "SELECT `ip` FROM `$tower_table`.`$bh_table` WHERE `wlan_mac` LIKE '$peer_mac'";
-			$fix_query = "UPDATE `$tower_table`.`$bh.table` SET `peer_ip` WHERE `ip` LIKE '$ip'";
-		}
-	} else {
-//		echo 'Variable add is not set';
+/*			$add_me_a_new_bh = "INSERT INTO `$database`.`$bh_table` (
+			`tower_#`,
+			`tower_name`,
+			`ip`,
+			`peer_ip`,
+			`model`,
+			`device_name`,
+			`frequency`,
+			`channel`,
+			`wireless_mode`,
+			`ssid`,
+			`security`,
+			`firmware`,
+			`channel_width`,
+			`distance`,
+			`wlan_mac`,
+			`lan_mac`,
+			`lan_speed`,
+			`connections`,
+			`noise_floor`,
+			`transmit_ccq`,
+			`airmax_enabled`,
+			`am_q`,
+			`am_c`,
+			`uptime`,
+			`dfs`,
+			`gps`,
+			`wds`,
+			`signal`,
+			`speed`,
+			`chains`,
+			`errors`) VALUES (
+			'tower_# placeholder'
+			'tower_name placeholder',
+			'$ip',
+			'$peer_mac',
+			'$model',
+			'$name',
+			'$freq',
+			'$channel',
+			'$mode',
+			'$ssid',
+			'$security',
+			'$fw',
+			'$width',
+			'$distance',
+			'$wlan_mac',
+			'$lan_mac',
+			'$lan',
+			'$connections',
+			'$noise',
+			'$ccq',
+			'$ame',
+			'$amq',
+			'$amc',
+			'$uptime',
+			'$dfs',
+			'$gps',
+			'$wds',
+			'$signal',
+			'$speeds',
+			'$chains',
+			'$errors')";
+*/		
 	}
+}
+
 	
-	
-?><pre><?php print_r($execute);?></pre>
+?>
 
 </body>
 </html>
