@@ -1,271 +1,34 @@
 <?php
-set_time_limit(0);
-function get_ubnt_stats($ip, $logins)
-{
-    $cookie_file = tempnam('/tmp', 'freqin-cookie');
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'http://' . $ip);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-    curl_setopt($ch, CURLOPT_HEADER, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 2);
-    curl_setopt($ch, CURLOPT_COOKIEJAR, $cookie_file);
-    $result = curl_exec($ch);
-    if (!strstr($result, 'AIROS_SESSIONID')) {
-        unlink($cookie_file);
-        return false;
-    }
-    
-    $radio_data = 0;
-    foreach ($logins as $login) {
-        $login_post_data = array(
-            'uri' => '/status.cgi',
-            'username' => $login['user'],
-            'password' => $login['pass'],
-            'Submit' => 'Login'
-        );
-        curl_setopt($ch, CURLOPT_HTTPHEADER, Array('Expect: '));
-        curl_setopt($ch, CURLOPT_HEADER, 0);
-        curl_setopt($ch, CURLOPT_URL, 'http://' . $ip . '/login.cgi');
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $login_post_data);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookie_file);
-        $result = curl_exec($ch);
-		
-// ATTEMPTING SSH
-		$command = "cat /var/etc/board.info | grep board.name | cut -d= -f2";
-		$port = 22;
-		$user = $_POST['username'];
-		$pass = $_POST['password'];
+include '../config.php.inc';
 
-		$connection = ssh2_connect($ip, $port);
-		ssh2_auth_password($connection, $user, $pass);
-		
-		$model = ssh2_exec($connection, $command);
-			if($model == 0) {
-				echo "An error has occured.";
-			}
-			stream_set_blocking($model, true);
-// END ATTEMPT
-
-		if ($result) {
-            $data = json_decode($result);
-// IF STATEMENT FOR <= 5.3.5 DEVICES
-            if (array_key_exists('lan', $data)) {
-                $radio_data = array(
-                    'name' => $data->host->hostname,
-                    'mode' => $data->wireless->mode == 'sta' ? 'Station' : 'Access Point',
-                    'fw' => $data->host->fwversion,
-                    'uptime' => sprintf('%.2f', $data->host->uptime / 86400) . ' days',
-					'dfs' => 'N',
-                    'freq' => preg_replace('/[^0-9]+/', '', $data->wireless->frequency),
-                    'channel' => $data->wireless->channel,
-					'width' => $data->wireless->chwidth,
-                    'signal' => $data->wireless->signal,
-                    'noise' => $data->wireless->noisef,
-					'wds' => $data->wireless->wds,
-					'ssid' => $data->wireless->essid,
-					'security' => $data->wireless->security,
-					'distance' => sprintf('%.2f', $data->wireless->distance * 0.000621371192) . 'mi',
-					'connections' => $data->wireless->count,
-					'ccq' => sprintf('%.1f', $data->wireless->ccq / 10) . '%',
-					'ame' => $data->wireless->polling->enabled,
-					'amq' => $data->wireless->polling->quality,
-					'amc' => $data->wireless->polling->capacity,
-					'lan' => isset($data->lan->status[0]->plugged) ? ($data->lan->status[0]->plugged ? $data->lan->status[0]->speed . "mbps-" . ($data->lan->status[0]->duplex ? 'Full' : 'Half') : 'Unplugged') : $data->lan->status[0],
-					'lan_mac' => $data->lan->hwaddr,
-					'wlan_mac' => $data->wlan->hwaddr,
-					'tx' => $data->wireless->txrate,
-					'rx' => $data->wireless->rxrate,
-					'retries' => $data->wireless->stats->tx_retries,
-					'err_other' => $data->wireless->stats->err_other,
-					'chains' => $data->wireless->chains,
-					'model' => trim(stream_get_contents($model)),
-					'gps' => 0
-					);
-
-			} else { // ELSE STATEMENT FOR > 5.3.5 DEVICES 			
-// IF GPS...
-					if(array_key_exists('gps', $data)) {
-						$radio_data = array(
-						'name' => $data->host->hostname,
-						'mode' => $data->wireless->mode == 'sta' ? 'Station' : 'Access Point',
-						'fw' => $data->host->fwversion,
-						'uptime' => sprintf('%.2f', $data->host->uptime / 86400) . ' days',
-						'dfs' => $data->wireless->dfs,
-						'freq' => preg_replace('/[^0-9]+/', '', $data->wireless->frequency),
-						'channel' => $data->wireless->channel,
-						'width' => $data->wireless->chwidth,
-						'signal' => $data->wireless->signal,
-						'noise' => $data->wireless->noisef,
-						'wds' => $data->wireless->wds,
-						'ssid' => $data->wireless->essid,
-						'security' => $data->wireless->security,
-						'distance' => sprintf('%.2f', $data->wireless->distance * 0.000621371192) . 'mi',
-						'connections' => $data->wireless->count,
-						'ccq' => sprintf('%.1f', $data->wireless->ccq / 10) . '%',
-						'ame' => $data->wireless->polling->enabled,
-						'amq' => $data->wireless->polling->quality,
-						'amc' => $data->wireless->polling->capacity,
-						'lan' => $data->interfaces[1]->status->speed . "mbps-" . ($data->interfaces[1]->status->duplex ? 'Full' : 'Half'),
-						'lan_mac' => $data->interfaces[1]->hwaddr,
-						'wlan_mac' => $data->interfaces[3]->hwaddr,
-						'tx' => $data->wireless->txrate,
-						'rx' => $data->wireless->rxrate,
-						'retries' => $data->wireless->stats->tx_retries,
-						'err_other' => $data->wireless->stats->err_other,
-						'chains' => $data->wireless->chains,
-						'model' => trim(stream_get_contents($model)) . " GPS",
-						'gps' => 1
-					);
-// TWO ETHERNETS, NO GPS.  GPS WOULD'VE BEEN MATCHED BY ABOVE CONDITION					
-					} elseif (($data->interfaces[3]->ifname) == 'wifi0') {
-						$radio_data = array(
-						'name' => $data->host->hostname,
-						'mode' => $data->wireless->mode == 'sta' ? 'Station' : 'Access Point',
-						'fw' => $data->host->fwversion,
-						'uptime' => sprintf('%.2f', $data->host->uptime / 86400) . ' days',
-						'dfs' => $data->wireless->dfs,
-						'freq' => preg_replace('/[^0-9]+/', '', $data->wireless->frequency),
-						'channel' => $data->wireless->channel,
-						'width' => $data->wireless->chwidth,
-						'signal' => $data->wireless->signal,
-						'noise' => $data->wireless->noisef,
-						'wds' => $data->wireless->wds,
-						'ssid' => $data->wireless->essid,
-						'security' => $data->wireless->security,
-						'distance' => sprintf('%.2f', $data->wireless->distance * 0.000621371192) . 'mi',
-						'connections' => $data->wireless->count,
-						'ccq' => sprintf('%.1f', $data->wireless->ccq / 10) . '%',
-						'ame' => $data->wireless->polling->enabled,
-						'amq' => $data->wireless->polling->quality,
-						'amc' => $data->wireless->polling->capacity,
-						'lan' => $data->interfaces[1]->status->speed . "mbps-" . ($data->interfaces[1]->status->duplex ? 'Full' : 'Half'),
-						'lan_mac' => $data->interfaces[1]->hwaddr,
-						'wlan_mac' => $data->interfaces[3]->hwaddr,
-						'tx' => $data->wireless->txrate,
-						'rx' => $data->wireless->rxrate,
-						'retries' => $data->wireless->stats->tx_retries,
-						'err_other' => $data->wireless->stats->err_other,
-						'chains' => $data->wireless->chains,
-						'model' => trim(stream_get_contents($model)),
-						'gps' => 0
-					);
-					} else {
-// ELSE {DEVICE ONLY HAS ONE ETHERNET PORT & IS NOT GPS}
-						$radio_data = array(
-						'name' => $data->host->hostname,
-						'mode' => $data->wireless->mode == 'sta' ? 'Station' : 'Access Point',
-						'fw' => $data->host->fwversion,
-						'uptime' => sprintf('%.2f', $data->host->uptime / 86400) . ' days',
-						'dfs' => $data->wireless->dfs,
-						'freq' => preg_replace('/[^0-9]+/', '', $data->wireless->frequency),
-						'channel' => $data->wireless->channel,
-						'width' => $data->wireless->chwidth,
-						'signal' => $data->wireless->signal,
-						'noise' => $data->wireless->noisef,
-						'wds' => $data->wireless->wds,
-						'ssid' => $data->wireless->essid,
-						'security' => $data->wireless->security,
-						'distance' => sprintf('%.2f', $data->wireless->distance * 0.000621371192) . 'mi',
-						'connections' => $data->wireless->count,
-						'ccq' => sprintf('%.1f', $data->wireless->ccq / 10) . '%',
-						'ame' => $data->wireless->polling->enabled,
-						'amq' => $data->wireless->polling->quality,
-						'amc' => $data->wireless->polling->capacity,
-						'lan' => $data->interfaces[1]->status->speed . "mbps-" . ($data->interfaces[1]->status->duplex ? 'Full' : 'Half'),
-						'lan_mac' => $data->interfaces[1]->hwaddr,
-						'wlan_mac' => $data->interfaces[2]->hwaddr,
-						'tx' => $data->wireless->txrate,
-						'rx' => $data->wireless->rxrate,
-						'retries' => $data->wireless->stats->tx_retries,
-						'err_other' => $data->wireless->stats->err_other,
-						'chains' => $data->wireless->chains,
-						'model' => trim(stream_get_contents($model)),
-						'gps' => 0
-					);
-
-					}
-			}
-    }
+	$connection = mysql_connect($mysql_host,$mysql_user,$mysql_pass);
+	if (!$connection) {
+		die("Database connection failed: " . mysql_error());
+	}
 	
-	unlink($cookie_file);
-    return $radio_data;
-}
-}
+	$db_select = mysql_select_db($database,$connection);
+	if (!$db_select) {
+		die("Database selection failed: " . mysql_error());
+	}
 
-
-// NEW CODE TO TRY AND GRAB PEER INFORMATION ##################################################################################################################################################################################################
-
-
-function get_peer_stats($ip, $logins)
-{
-    $cookie_file = tempnam('/tmp', 'peer-cookie');
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'http://' . $ip);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-    curl_setopt($ch, CURLOPT_HEADER, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 2);
-    curl_setopt($ch, CURLOPT_COOKIEJAR, $cookie_file);
-    $result = curl_exec($ch);
-    if (!strstr($result, 'AIROS_SESSIONID')) {
-        unlink($cookie_file);
-		return false;
-    } 
-    
-    $peer_data = 0;
-    foreach ($logins as $login) {
-        $login_post_data = array(
-            'uri' => '/sta.cgi',
-            'username' => $login['user'],
-            'password' => $login['pass'],
-            'Submit' => 'Login'
-        );
-        curl_setopt($ch, CURLOPT_HTTPHEADER, Array('Expect: '));
-        curl_setopt($ch, CURLOPT_HEADER, 0);
-        curl_setopt($ch, CURLOPT_URL, 'http://' . $ip . '/login.cgi');
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $login_post_data);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookie_file);
-        $presult = curl_exec($ch);
-        if ($presult) {
-            $peer = json_decode($presult);
-            if (isset($peer[0]->aprepeater)) {
-                $peer_data = array(
-                    'name' => $peer[0]->name,
-					'mac' => $peer[0]->mac,
-					'ip' => $peer[0]->lastip,
-					'rep' => $peer[0]->aprepeater
-				);
-				} else {
-				$peer_data = array(
-					'name' => $peer[0]->name,
-					'mac' => $peer[0]->mac,
-					'ip' => $peer[0]->lastip,
-					'rep' => 'A'
-				);
-            }
-        } 			
-    }
-    unlink($cookie_file);
-    return $peer_data;
-}
-	
 ?>
 <html>
 <head>
 <title>Freqin'</title>
 <style type="text/css">
 body {
-    background-color: #fff;
     color: #000;
     font: 8pt Verdana;
+	background-image:url('rd.png');
+	background-repeat:no-repeat;
+	background-attachment:fixed;
+	background-position: 99% 99%;
 }
 td {
     color: #000;
     font: 8pt Verdana;
 }
+
 </style>
 </head>
 <body>
@@ -406,14 +169,13 @@ flush();
 <tr><td><b>Secondary Username:</b></td><td><input type="text" size="20" name="username2" value="<?php echo isset($_POST['username2']) ? $_POST['username2'] : 'ubnt'; ?>" /></td><td><b>Password:</b></td><td><input type="password" name="password2" value="<?php echo isset($_POST['password2']) ? $_POST['password2'] : ''; ?>" size="20" /></td></tr>
 </table><br />
 <input type="submit" value="Go" />
-</form>
 <?php
 if (isset($radio_data)) {
     echo '<br /><br />';
     echo '<table border="0" cellspacing="1" cellpadding="4" width="100%">';
     echo '<tr align="center" style="background-color:#ddd">';
     echo '<td><b>IP</b></td>';
-	echo '<td><b>Peer IP</b></td>';
+	echo '<td><b>Peer MAC</b></td>';
 	echo '<td><b>Model</b></td>';
     echo '<td><b>Name</b></td>';
     echo '<td><b>Mode</b></td>';
@@ -440,15 +202,24 @@ if (isset($radio_data)) {
 	echo '<td><b><a href="javascript:alert(\'airMax Quality\')">AMQ</a></b></td>';
 	echo '<td><b><a href="javascript:alert(\'airMax Capacity\')">AMC</a></b></td>';
 	echo '<td><b>GPS</b></td>';
-	echo '<td><b>+</b></td>';
+	echo '<td><b><a href="javascript:alert(\'                                                 Add to Database\n If checkbox is grayed out, the device IP already exists in the database.\')">+</a></b></td>';
     echo '</tr>';
-for ($bgcolor = '#fff'; list($ip,$data) = each($radio_data); $bgcolor = $bgcolor == '#fff' ? '#eee' : '#fff') {
-        echo '<tr align="center" style="background-color:' . $bgcolor . '">';
-        echo '<td><a href="http://' . $ip . '" target="_blank">' . $ip . '</a></td>';
-        
+	
+$i = 0;	
+for ($bgcolor = 'transparent'; list($ip,$data) = each($radio_data); $bgcolor = $bgcolor == 'transparent' ? '#eee' : 'transparent') {
+		echo '<tr align="center" style="background-color:' . $bgcolor . '">';
+		
+		echo '<td><a href="http://' . $ip . '" target="_blank">' . $ip . '</a></td>';
+		        
 		for ($j = 0; list($ip,$pdata) = each($peer_data); $j++) {
-			echo '<td>' . $pdata['mac'] . '</td>';
-			break;
+			if(isset($pdata['mac'])) {	
+				echo '<td>' . $pdata['mac'] . '</td>';
+				break;
+			} else {
+				echo '<td>NOT ASSOCIATED</td>';
+				$pdata['mac'] = "NOT ASSOCIATED";
+				break;
+			}
 		}
 		
 		echo '<td>' . $data['model'] . '</td>';
@@ -485,29 +256,178 @@ for ($bgcolor = '#fff'; list($ip,$data) = each($radio_data); $bgcolor = $bgcolor
 		echo '<td>' . $data['ccq'] . '</td>';
 		if($data['ame'] == 1) {	
 			echo '<td>Y</td>';
+			echo '<td>' . $data['amq'] . '</td>';
+			echo '<td>' . $data['amc'] . '</td>';
 		} else {
 			echo '<td>N</td>';
+			echo '<td>N/A</td>';
+			echo '<td>N/A</td>';
 		}
-		if($data['ame'] == 1) {
+/*		if($data['ame'] == 1) {
 			echo '<td>' . $data['amq'] . '</td>';
 			echo '<td>' . $data['amc'] . '</td>';
 		} else {
 			echo '<td>N/A</td>';
 			echo '<td>N/A</td>';
 		}
-		if($data['gps'] == 1) {
+*/		if($data['gps'] == 1) {
 			echo '<td>Y</td>';
 		} else {
 			echo '<td>N</td>';
 		}
-		echo '<td><input type="checkbox" name="addtodb" value="' . $ip . '" /></td>';
+		$nodup = "SELECT * FROM `$bh_table` WHERE `ip` LIKE '$ip'";
+			$execute = mysql_query($nodup);
+			$execute = mysql_fetch_array($execute);
+			if(!in_array($ip, $execute)) {
+				echo '<td><input type="checkbox" name="addtodb[]" value="' . $ip . '" /></td>';
+			} else {
+				echo '<td><input type="checkbox" name="addtodb[]" value="' . $ip . '" disabled /></td>';
+			}
 		echo '</tr>';
     }
 	echo '</table>';
-
+	if(isset($radio_data) && isset($peer_data)){
+		echo "<input type=\"submit\" name=\"add\" value=\"Add Checked to Database\"></form>";
+	} else {
+		echo "<input type=\"submit\" name=\"add\" value=\"Add Checked to Database\" disabled>";
+	}
 }
 
-?><pre><?php print_r($radio_data) . "<br>" . print_r($peer_data);?></pre>
+?></form>
+<pre><?php //print_r($radio_data); ?></pre><br><?php
+
+	if(isset($_POST['add'])) {
+		$tobeadded = $_POST['addtodb'];
+		
+		foreach($tobeadded as $ip) {
+//			echo $ip . "<br>";
+			if(in_array($ip, $tobeadded)) {
+				$nodup = "SELECT * FROM `$bh_table` WHERE `ip` LIKE '$ip'";
+				
+				$execute = mysql_query($nodup);
+				$execute = mysql_fetch_array($execute);
+				
+				if(!in_array($ip, $execute)) {
+				
+				for ($j = 0; list($ip,$pdata) = each($peer_data); $j++) {
+					if(isset($pdata['mac'])) {	
+						$peer_mac = $pdata['mac'];
+						break;
+					} else {
+						$peer_mac = "NOT ASSOCIATED";
+						break;
+					}
+				}
+					$speeds = $radio_data[$ip]['tx'] . "/" . $radio_data[$ip]['rx'];
+					$errors = ($radio_data[$ip]['retries'] + $radio_data[$ip]['err_other']);
+					$model = $radio_data[$ip]['model'];
+					$name = $radio_data[$ip]['name'];
+					$freq = $radio_data[$ip]['freq'];
+					$channel = $radio_data[$ip]['channel'];
+					$mode = $radio_data[$ip]['mode'];
+					$ssid = $radio_data[$ip]['ssid'];
+					$security = $radio_data[$ip]['security'];
+					$fw = $radio_data[$ip]['fw'];
+					$width = $radio_data[$ip]['width'];
+					$distance = $radio_data[$ip]['distance'];
+					$wlan_mac = $radio_data[$ip]['wlan_mac'];
+					$lan_mac = $radio_data[$ip]['lan_mac'];
+					$lan = $radio_data[$ip]['lan'];
+					$connections = $radio_data[$ip]['connections'];
+					$noise = $radio_data[$ip]['noise'];
+					$ccq = $radio_data[$ip]['ccq'];
+					$ame = $radio_data[$ip]['ame'];
+					$amq = $radio_data[$ip]['amq'];
+					$amc = $radio_data[$ip]['amc'];
+					$uptime = $radio_data[$ip]['uptime'];
+					$dfs = $radio_data[$ip]['dfs'];
+					$gps = $radio_data[$ip]['gps'];
+					$wds = $radio_data[$ip]['wds'];
+					$signal = $radio_data[$ip]['signal'];
+					$chains = $radio_data[$ip]['chains'];
+			
+//					echo "<pre>" . print_r($radio_data[$ip]) . "</pre>";
+					$add_me_a_new_bh = "INSERT INTO `$database`.`$bh_table` (
+					`tower_#`,
+					`tower_name`,
+					`ip`,
+					`peer_ip`,
+					`model`,
+					`device_name`,
+					`frequency`,
+					`channel`,
+					`wireless_mode`,
+					`ssid`,
+					`security`,
+					`firmware`,
+					`channel_width`,
+					`distance`,
+					`wlan_mac`,
+					`lan_mac`,
+					`lan_speed`,
+					`connections`,
+					`noise_floor`,
+					`transmit_ccq`,
+					`airmax_enabled`,
+					`am_q`,
+					`am_c`,
+					`uptime`,
+					`dfs`,
+					`gps`,
+					`wds`,
+					`signal`,
+					`speed`,
+					`chains`,
+					`errors`) VALUES (
+					'tower_# placeholder'
+					'tower_name placeholder',
+					'$ip',
+					'$peer_mac',
+					'$model',
+					'$name',
+					'$freq',
+					'$channel',
+					'$mode',
+					'$ssid',
+					'$security',
+					'$fw',
+					'$width',
+					'$distance',
+					'$wlan_mac',
+					'$lan_mac',
+					'$lan',
+					'$connections',
+					'$noise',
+					'$ccq',
+					'$ame',
+					'$amq',
+					'$amc',
+					'$uptime',
+					'$dfs',
+					'$gps',
+					'$wds',
+					'$signal',
+					'$speeds',
+					'$chains',
+					'$errors')";
+				
+					echo "<font color=GREEN>SUCCESS: " . $ip . "</font><br><hr><br>";
+				} else {
+				echo "<font color=RED>Error: " . $ip . " already exists in database!</font><br><hr>" . $execute;
+				}
+		} else {
+			echo "Not verified";
+		}
+// Query to get Peer IP based on 
+			$pip_get = "SELECT `ip` FROM `$tower_table`.`$bh_table` WHERE `wlan_mac` LIKE '$peer_mac'";
+			$fix_query = "UPDATE `$tower_table`.`$bh.table` SET `peer_ip` WHERE `ip` LIKE '$ip'";
+		}
+	} else {
+//		echo 'Variable add is not set';
+	}
+	
+	
+?><pre><?php print_r($execute);?></pre>
 
 </body>
 </html>
