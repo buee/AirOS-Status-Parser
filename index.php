@@ -1,5 +1,6 @@
 <?php
 include '../config.php.inc';
+//ini_set('display_errors', '0');
 
 	$connection = mysql_connect($mysql_host,$mysql_user,$mysql_pass);
 	if (!$connection) {
@@ -277,6 +278,117 @@ for ($bgcolor = 'transparent'; list($ip,$data) = each($radio_data); $bgcolor = $
 //				echo '<td><input type="checkbox" name="addtodb[]" value="' . $ip . '" disabled /></td>';
 //			}
 		echo '</tr>';
+		
+		?><pre><?php /*print_r($peer_data)*/;?></pre><?php
+		
+		if((isset($_POST['add'])) && (in_array($ip,$_POST['addtodb']))) {
+			$tobeadded = $_POST['addtodb'];
+			
+			//foreach($tobeadded as $pos => $ip){
+			//for($i = 0; $i < count($tobeadded); $i++) {
+				$pmac = $peer_data[$ip]['mac'];
+				$speeds = $radio_data[$ip]['tx'] . "/" . $radio_data[$ip]['rx'];
+				$errors = ($radio_data[$ip]['retries'] + $radio_data[$ip]['err_other']);
+				$model = $radio_data[$ip]['model'];
+				$name = $radio_data[$ip]['name'];
+				$freq = $radio_data[$ip]['freq'];
+				$channel = $radio_data[$ip]['channel'];
+				$mode = $radio_data[$ip]['mode'];
+				$ssid = $radio_data[$ip]['ssid'];
+				$security = $radio_data[$ip]['security'];
+				$fw = $radio_data[$ip]['fw'];
+				$width = $radio_data[$ip]['width'];
+				$distance = $radio_data[$ip]['distance'];
+				$wlan_mac = $radio_data[$ip]['wlan_mac'];
+				$lan_mac = $radio_data[$ip]['lan_mac'];
+				$lan = $radio_data[$ip]['lan'];
+				$connections = $radio_data[$ip]['connections'];
+				$noise = $radio_data[$ip]['noise'];
+				$ccq = $radio_data[$ip]['ccq'];
+				$ame = $radio_data[$ip]['ame'];
+				$amq = $radio_data[$ip]['amq'];
+				$amc = $radio_data[$ip]['amc'];
+				$uptime = $radio_data[$ip]['uptime'];
+				$dfs = $radio_data[$ip]['dfs'];
+				$gps = $radio_data[$ip]['gps'];
+				$wds = $radio_data[$ip]['wds'];
+				$signal = $radio_data[$ip]['signal'];
+				$chains = $radio_data[$ip]['chains'];
+			
+			//echo "<br>" . $chains . "<br>" . $ip . "<br>"/* . $pmac*/;
+			//echo $peer_data[$ip]['mac'];
+			//echo "<br>" . gettype($chains) . "<br>";
+			
+				$add_me_a_new_bh = "INSERT INTO `$database`.`$bh_table` (
+					`tower_#`,
+					`tower_name`,
+					`ip`,
+					`peer_ip`,
+					`model`,
+					`device_name`,
+					`frequency`,
+					`channel`,
+					`wireless_mode`,
+					`ssid`,
+					`security`,
+					`firmware`,
+					`channel_width`,
+					`distance`,
+					`wlan_mac`,
+					`lan_mac`,
+					`lan_speed`,
+					`connections`,
+					`noise_floor`,
+					`transmit_ccq`,
+					`airmax_enabled`,
+					`am_q`,
+					`am_c`,
+					`uptime`,
+					`dfs`,
+					`gps`,
+					`wds`,
+					`signal`,
+					`speed`,
+					`chains`,
+					`errors`) VALUES (
+					'tower_# placeholder'
+					'tower_name placeholder',
+					'$ip',
+					'$pmac',
+					'$model',
+					'$name',
+					'$freq',
+					'$channel',
+					'$mode',
+					'$ssid',
+					'$security',
+					'$fw',
+					'$width',
+					'$distance',
+					'$wlan_mac',
+					'$lan_mac',
+					'$lan',
+					'$connections',
+					'$noise',
+					'$ccq',
+					'$ame',
+					'$amq',
+					'$amc',
+					'$uptime',
+					'$dfs',
+					'$gps',
+					'$wds',
+					'$signal',
+					'$speeds',
+					'$chains',
+					'$errors')";				
+				
+				echo "<br>" . $add_me_a_new_bh;
+				
+			//}
+		}
+		
+		
     }
 	echo '</table>';
 	if(isset($radio_data) && isset($peer_data)){
@@ -286,123 +398,7 @@ for ($bgcolor = 'transparent'; list($ip,$data) = each($radio_data); $bgcolor = $
 	}
 }
 
-?></form>
-<?php
-
-if(isset($_POST['add'])) {
-	$tobeadded = $_POST['addtodb'];
-	
-	foreach($tobeadded as $pos => $ip){
-		$speeds = $radio_data[$ip]['tx'] . "/" . $radio_data[$ip]['rx'];
-		$errors = ($radio_data[$ip]['retries'] + $radio_data[$ip]['err_other']);
-		$model = $radio_data[$ip]['model'];
-		$name = $radio_data[$ip]['name'];
-		$freq = $radio_data[$ip]['freq'];
-		$channel = $radio_data[$ip]['channel'];
-		$mode = $radio_data[$ip]['mode'];
-		$ssid = $radio_data[$ip]['ssid'];
-		$security = $radio_data[$ip]['security'];
-		$fw = $radio_data[$ip]['fw'];
-		$width = $radio_data[$ip]['width'];
-		$distance = $radio_data[$ip]['distance'];
-		$wlan_mac = $radio_data[$ip]['wlan_mac'];
-		$lan_mac = $radio_data[$ip]['lan_mac'];
-		$lan = $radio_data[$ip]['lan'];
-		$connections = $radio_data[$ip]['connections'];
-		$noise = $radio_data[$ip]['noise'];
-		$ccq = $radio_data[$ip]['ccq'];
-		$ame = $radio_data[$ip]['ame'];
-		$amq = $radio_data[$ip]['amq'];
-		$amc = $radio_data[$ip]['amc'];
-		$uptime = $radio_data[$ip]['uptime'];
-		$dfs = $radio_data[$ip]['dfs'];
-		$gps = $radio_data[$ip]['gps'];
-		$wds = $radio_data[$ip]['wds'];
-		$signal = $radio_data[$ip]['signal'];
-		$chains = $radio_data[$ip]['chains'];
-	
-		?><pre><?php print_r($pdata);?></pre><?php
-/*		for ($j = 0; list($ip,$pdata) = each($peer_data); $j++) {
-			if(isset($pdata['mac'])) {	
-				$peermac = $pdata['mac'];
-				break;
-			} else {
-				$peermac = "NOT ASSOCIATED";
-				break;
-			}
-		}
-*/		
-		echo $ip . "<br>" . $wlan_mac . "<br>" . $peermac . "<br>" . $name . "<br><hr><br>";
-		
-/*			$add_me_a_new_bh = "INSERT INTO `$database`.`$bh_table` (
-			`tower_#`,
-			`tower_name`,
-			`ip`,
-			`peer_ip`,
-			`model`,
-			`device_name`,
-			`frequency`,
-			`channel`,
-			`wireless_mode`,
-			`ssid`,
-			`security`,
-			`firmware`,
-			`channel_width`,
-			`distance`,
-			`wlan_mac`,
-			`lan_mac`,
-			`lan_speed`,
-			`connections`,
-			`noise_floor`,
-			`transmit_ccq`,
-			`airmax_enabled`,
-			`am_q`,
-			`am_c`,
-			`uptime`,
-			`dfs`,
-			`gps`,
-			`wds`,
-			`signal`,
-			`speed`,
-			`chains`,
-			`errors`) VALUES (
-			'tower_# placeholder'
-			'tower_name placeholder',
-			'$ip',
-			'$peer_mac',
-			'$model',
-			'$name',
-			'$freq',
-			'$channel',
-			'$mode',
-			'$ssid',
-			'$security',
-			'$fw',
-			'$width',
-			'$distance',
-			'$wlan_mac',
-			'$lan_mac',
-			'$lan',
-			'$connections',
-			'$noise',
-			'$ccq',
-			'$ame',
-			'$amq',
-			'$amc',
-			'$uptime',
-			'$dfs',
-			'$gps',
-			'$wds',
-			'$signal',
-			'$speeds',
-			'$chains',
-			'$errors')";
-*/		
-	}
-}
-
-	
 ?>
-
+</form>
 </body>
 </html>
