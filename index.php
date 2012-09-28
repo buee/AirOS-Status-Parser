@@ -197,7 +197,7 @@ if (isset($radio_data)) {
 	echo '<td><b><a href="javascript:alert(\'Connections\')">?</b></td>';
 	echo '<td><b>Speeds</b></td>';
 	echo '<td><b>Chain</b></td>';
-	echo '<td><b>Errors</b></td>';
+	echo '<td><b>Err</b></td>';
 	echo '<td><b>CCQ</b></td>';
 	echo '<td><b><a href="javascript:alert(\'airMax Enabled?\')">AME</a></b></td>';
 	echo '<td><b><a href="javascript:alert(\'airMax Quality\')">AMQ</a></b></td>';
@@ -269,23 +269,33 @@ for ($bgcolor = 'transparent'; list($ip,$data) = each($radio_data); $bgcolor = $
 		} else {
 			echo '<td>N</td>';
 		}
-//		$nodup = "SELECT * FROM `$bh_table` WHERE `ip` LIKE '$ip'";
-//			$execute = mysql_query($nodup);
-//			$execute = mysql_fetch_array($execute);
-//			if(!in_array($ip, $execute)) {
-				echo '<td><input type="checkbox" name="addtodb[]" value="' . $ip . '" /></td>';
-//			} else {
-//				echo '<td><input type="checkbox" name="addtodb[]" value="' . $ip . '" disabled /></td>';
-//			}
+		$nodup = "SELECT * FROM `$bh_table` WHERE `ip` LIKE '$ip'";
+			$execute = mysql_query($nodup);
+			$execute = mysql_fetch_array($execute);
+	
+	//ALL SORTS OF EXPERIMENTATION
+		$result = mysql_query("SELECT * FROM $tower_table ORDER BY `tower_#` ASC", $connection);
+		if (!$result){
+			die("Database query failed: " . mysql_error());
+		}
+		
+		if(!in_array($ip, $execute)) {
+			echo "<td><select name=\"addtodb[]\" width=\"50px\" style=\"width: 50px\">";
+			echo "<option selected=\"selected\">-</option>";
+			while ($row = mysql_fetch_array($result)) {
+				echo "<option value=\"" . $row['tower_#'] . "\">" . str_pad($row['tower_#'], 3, '0', STR_PAD_LEFT) . "</option>";
+			}
+			echo "</select></td>";
+//				echo '<td><input type="text" name="addtodb[]" value="' . $ip . '" /></td>';
+		} else {
+			echo "<td>NULL</td>";
+		}
 		echo '</tr>';
 		
-		?><pre><?php /*print_r($peer_data)*/;?></pre><?php
-		
-		if((isset($_POST['add'])) && (in_array($ip,$_POST['addtodb']))) {
-			$tobeadded = $_POST['addtodb'];
 			
-			//foreach($tobeadded as $pos => $ip){
-			//for($i = 0; $i < count($tobeadded); $i++) {
+		if((isset($_POST['add'])) && (isset($_POST['addtodb']))) {
+				$tobeadded = $_POST['addtodb'];
+			
 				$pmac = $peer_data[$ip]['mac'];
 				$speeds = $radio_data[$ip]['tx'] . "/" . $radio_data[$ip]['rx'];
 				$errors = ($radio_data[$ip]['retries'] + $radio_data[$ip]['err_other']);
@@ -314,10 +324,6 @@ for ($bgcolor = 'transparent'; list($ip,$data) = each($radio_data); $bgcolor = $
 				$wds = $radio_data[$ip]['wds'];
 				$signal = $radio_data[$ip]['signal'];
 				$chains = $radio_data[$ip]['chains'];
-			
-			//echo "<br>" . $chains . "<br>" . $ip . "<br>"/* . $pmac*/;
-			//echo $peer_data[$ip]['mac'];
-			//echo "<br>" . gettype($chains) . "<br>";
 			
 				$add_me_a_new_bh = "INSERT INTO `$database`.`$bh_table` (
 					`tower_#`,
@@ -383,13 +389,21 @@ for ($bgcolor = 'transparent'; list($ip,$data) = each($radio_data); $bgcolor = $
 					'$chains',
 					'$errors')";				
 				
-				echo "<br>" . $add_me_a_new_bh;
+//				echo "<br>" . $add_me_a_new_bh;
 				
-			//}
-		}
-		
+/*				$execute = mysql_query($add_me_a_new_bh);
+					if($execute == 0) {
+						echo "Error adding " . $ip . " to the database.  Please contact the database administrator.<br>" . mysql_error();
+					}
+					
+*/		}		
 		
     }
+	
+	?><pre><?php print_r($data); ?></pre><?php
+	?><pre><?php print_r($pdata); ?></pre><?php
+	?><pre><?php print_r($tobeadded); ?></pre><?php
+		
 	echo '</table>';
 	if(isset($radio_data) && isset($peer_data)){
 		echo "<input type=\"submit\" name=\"add\" value=\"Add Checked to Database\"></form>";
